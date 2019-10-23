@@ -13,6 +13,9 @@ $Computers = ($Searcher.Findall())
 
 filter Invoke-Ping {(New-Object System.Net.NetworkInformation.Ping).Send($_,100)}
 
+# Set current location to the quser.exe tool
+Set-Location $env:windir\system32;
+
 $global:SessionList = @();
 
 # Get the current Error Action Preference
@@ -27,7 +30,7 @@ $Computers.Properties.dnshostname | Foreach {
      # Ping host first, to improve performance. 
      # NOTE: if Endpoints have Firewall blocking ICMP echo resp/req, host will be skipped! can alter this easily in the code if needed
      if (($Computer | Invoke-Ping).status -eq "Success") {
-        $TempData = quser /Server:$Computer | ForEach { (($_.trim() -replace "\s+",","))}
+        $TempData = .\quser.exe /Server:$Computer | ForEach { (($_.trim() -replace "\s+",","))}
         #$queryResults = (($TempData -split '\n')[0] + '-2' | Out-String).trim() + "`n" + ($TempData | Select -Skip 1 | Out-String).trim() | ConvertFrom-Csv
         $TempData | select -Skip 1 | foreach {
             $TempSession = $_;
