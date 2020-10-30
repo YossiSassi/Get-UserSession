@@ -1,7 +1,7 @@
 <#
 No dependencies required (e.g. no ActiveDirectory Module needed or RSAT)
 Run w/account that has Local Admin on domain endpoints
-Comments welcome to yossi@CyberArtSecurity.com
+Comments welcome to yossis@protonmail.com
 #>
 
 #$Computers = Get-ADComputer -Filter {Enabled -eq 'true'}
@@ -48,7 +48,7 @@ $Computers.Properties.dnshostname | Foreach {
                     $Obj | Add-Member -MemberType NoteProperty -Name LogonTime -Value "$($TempSession.Split(",")[5]) $($TempSession.Split(",")[6])" -Force
                     $User = $Obj.USERNAME.ToUpper()
                     If (($User -match "[a-z]") -and ($User -ne $NULL)) {
-                    Write-Host $Computer logged in by $User on session type $queryResult.STATE -ForegroundColor Cyan
+                    Write-Host $Computer logged in by $User on session type $($queryResult.STATE) -ForegroundColor Cyan
                     $Obj | Add-Member -MemberType NoteProperty -Name ComputerName -Value $Computer -Force
                     $global:SessionList += $Obj
                     $obj = $NULL
@@ -63,7 +63,7 @@ $Computers.Properties.dnshostname | Foreach {
                     $Obj | Add-Member -MemberType NoteProperty -Name LogonTime -Value "$($TempSession.Split(",")[6]) $($TempSession.Split(",")[7])" -Force
                     $User = $Obj.USERNAME.ToUpper()
                     If (($User -match "[a-z]") -and ($User -ne $NULL)) {
-                    Write-Host $Computer logged in by $User on session type $queryResult.STATE -ForegroundColor Cyan
+                    Write-Host $Computer logged in by $User on session type $($queryResult.STATE) -ForegroundColor Cyan
                     $Obj | Add-Member -MemberType NoteProperty -Name ComputerName -Value $Computer -Force
                     $global:SessionList += $Obj
                     $obj = $NULL
