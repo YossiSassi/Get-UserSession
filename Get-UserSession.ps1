@@ -2,21 +2,39 @@
 Agentless, pure "living off the land" (No dependencies required, e.g. no ActiveDirectory Module needed or RSAT) for mapping user session in a 'Hacktive Directory' domain.
 Run w/account that has Local Admin on domain endpoints. relays on port 445 to be open on the endPoints (quser.exe tool is used).
 
+By default, tries to query all enabled computer accounts in the domain. Can also specify specific computer(s).
+
 Comments welcome to 1nTh35h311 (yossis@protonmail.com)
-Version: 1.0.1
+Version: 1.0.2
 #>
+param (
+    [cmdletbinding()]
+    [parameter(mandatory=$false)]
+    [string[]]$ComputerName
+)
 
 $DomainName = ([adsi]'').name;
 $ReportFile = "$(Get-Location)\Sessions_$($DomainName)_$(Get-Date -Format ddMMyyyyHHmmss).csv";
 $CurrentDirectory = Get-Location;
 
-#$Computers = Get-ADComputer -Filter {Enabled -eq 'true'}
-# Get all Enabled computer accounts 
-$Searcher = New-Object DirectoryServices.DirectorySearcher([ADSI]"");
-$Searcher.Filter = "(&(objectClass=computer)(!userAccountControl:1.2.840.113556.1.4.803:=2))";
-$Searcher.PageSize = 100000; # by default, 1000 are returned for adsiSearcher. this script will handle up to 100K acccounts.
-$Computers = ($Searcher.Findall());
-$TotalCount = $Computers.Count;
+if (!$ComputerName)
+    {
+        Write-Host "Querying all enabled & accessible computer accounts in domain $DomainName... (Default)" -ForegroundColor Green;
+        # Get all Enabled computer accounts 
+        #$Computers = Get-ADComputer -Filter {Enabled -eq 'true'}
+        $Searcher = New-Object DirectoryServices.DirectorySearcher([ADSI]"");
+        $Searcher.Filter = "(&(objectClass=computer)(!userAccountControl:1.2.840.113556.1.4.803:=2))";
+        $Searcher.PageSize = 100000; # by default, 1000 are returned for adsiSearcher. this script will handle up to 100K acccounts.
+        $Computers = ($Searcher.Findall());
+        $HostsToQuery = $Computers.Properties.dnshostname;
+        $TotalCount = $HostsToQuery.Count;
+    }
+else # specific computer(s) specified
+    {
+        Write-Host "Querying computers specified. " -NoNewline -ForegroundColor Yellow; Write-Host " Run without any parameters to query ALL computers in domain $DomainName." -ForegroundColor Green;
+        $HostsToQuery = $ComputerName;
+        $TotalCount = ($ComputerName | Measure-Object).Count
+    }
 
 # function to ensure port 445 is open on destination (quser, qwinsta etc relay on it - queries done over SMB)
 filter Invoke-PortPing {((New-Object System.Net.Sockets.TcpClient).ConnectAsync($_,445)).Wait(100)}
@@ -33,7 +51,7 @@ $CurrentEAP = $ErrorActionPreference;
 # Set script not to alert for errors
 $ErrorActionPreference = "silentlycontinue";
 
-$Computers.Properties.dnshostname | Foreach {
+$HostsToQuery | Foreach {
     $Computer = $_
      Write-Host "Querying $Computer ($i out of $TotalCount)"
 
@@ -56,8 +74,9 @@ $ErrorActionPreference = $CurrentEAP;
 Set-Location $CurrentDirectory;
 
 Write-Host `nTotal of $global:SessionList.Count sessions found -ForegroundColor Green;
-Write-Host Report file saved to $ReportFile`n -ForegroundColor Cyan;
+Write-Host Report file saved to $ReportFile`n -ForegroundColor Gray;
 
+if ($global:SessionList.Count -ge 2) {
 # allow in memory query of the collected sessions info
 Do {
     Write-Host "Type the username you wish to see the Session(s) for, or press ENTER to exit:" -ForegroundColor Yellow
@@ -65,8 +84,9 @@ Do {
     $global:SessionList | where username -eq $username
     }
     until ($username -eq '')
+}
 
-Write-Host Type '$global:SessionList' to see the full session list in memory. -ForegroundColor Cyan;
+Write-Host Type '$global:SessionList' to see the full session list in memory. -ForegroundColor Magenta;
 # NOTE: you can use this global variable to query sessions further and/or export them to other formats, e.g. 
 # To a grid: $global:SessionList | Out-GridView
 # or JSON: $global:SessionList | ConvertTo-Json | Out-File .\Sessions.json
