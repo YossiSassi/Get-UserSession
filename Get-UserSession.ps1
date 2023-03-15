@@ -62,6 +62,7 @@ $HostsToQuery | Foreach {
             if ($QueryData -notlike "No User exists for ") {
                 $Obj = ($QueryData).SubString(1) -replace '\s{2,}', ',' | ConvertFrom-CSV;
                 $obj | foreach {Write-Host "$Computer logged in by $($_.USERNAME.ToUpper()) (State: $($_.STATE))" -ForegroundColor Cyan}
+		$Obj | ForEach-Object { Add-Member -InputObject $_ -MemberType NoteProperty -Name ComputerName -Value $computer -Force}
                 $global:SessionList += $Obj;
                 $Obj | Export-Csv $ReportFile -NoTypeInformation -Append;
                 Clear-Variable obj, QueryData; $i++
