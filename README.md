@@ -9,3 +9,6 @@ By default, tries to query all enabled computer accounts in the domain. Can also
 
 Comments & feedback welcome.
 
+
+Note: 
+### If you do Not have Admin rights, and/or you're looking to know both accounts connected via SMB shares as well as interactive, try "Get-UserSession2" script (https://github.com/YossiSassi/Get-UserSession2) 
