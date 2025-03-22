@@ -5,7 +5,9 @@ Run w/account that has Local Admin on domain endpoints. relays on port 445 to be
 By default, tries to query all enabled computer accounts in the domain. Can also specify specific computer(s).
 
 Comments welcome to 1nTh35h311 (yossis@protonmail.com)
-Version: 1.0.2
+Version: 1.0.3
+v1.0.3 - An issue fixed by Elrwes/Erland Westervik (Thank you!) resulting in unaligned property values, because SESSIONNAME is empty for disconnected sessions, and the delimiter was spaces.
+v1.0.2 - bug fix not displaying some fields correctly (March 23')
 #>
 param (
     [cmdletbinding()]
@@ -51,7 +53,7 @@ $CurrentEAP = $ErrorActionPreference;
 # Set script not to alert for errors
 $ErrorActionPreference = "silentlycontinue";
 
-$HostsToQuery | Foreach {
+$HostsToQuery | ForEach-Object {
     $Computer = $_
      Write-Host "Querying $Computer ($i out of $TotalCount)"
 
@@ -60,13 +62,49 @@ $HostsToQuery | Foreach {
      if (($Computer | Invoke-PortPing) -eq "True") {
             $QueryData = .\quser.exe /Server:$Computer;
             if ($QueryData -notlike "No User exists for ") {
-                $Obj = ($QueryData).SubString(1) -replace '\s{2,}', ',' | ConvertFrom-CSV;
-                $obj | foreach {Write-Host "$Computer logged in by $($_.USERNAME.ToUpper()) (State: $($_.STATE))" -ForegroundColor Cyan}
-		$Obj | ForEach-Object { Add-Member -InputObject $_ -MemberType NoteProperty -Name ComputerName -Value $computer -Force}
-                $global:SessionList += $Obj;
-                $Obj | Export-Csv $ReportFile -NoTypeInformation -Append;
-                Clear-Variable obj, QueryData; $i++
+                
+                # SESSIONNAME is empty for disconnected sessions.
+                # This will cause property values to shift one place to the left, when using spaces as delimiter.
+                # As a fix, we can count the fields/values to handle active/disconnected case different.
+                $Objects = @()
+                $Lines = $QueryData.Trim().Split("`n") | Select-Object -Skip 1
+                foreach ($Line in $Lines) {             
+                    $Fields = $Line -split '\s{2,}'
+                    if ($Fields.count -eq 6) {
+                        $Obj = [PSCustomObject]@{
+                            COMPUTERNAME = $Computer
+                            USERNAME     = $Fields[0]
+                            SESSIONNAME  = $Fields[1]
+                            ID           = $Fields[2]
+                            STATE        = $Fields[3]
+                            IDLE_TIME    = $Fields[4]
+                            LOGON_TIME   = $Fields[5]
+                        }
+                    }
+                    elseif ($fields.count -eq 5) {
+                        $Obj = [PSCustomObject]@{
+                            COMPUTERNAME = $Computer
+                            USERNAME     = $Fields[0]
+                            SESSIONNAME  = ''
+                            ID           = $Fields[1]
+                            STATE        = $Fields[2]
+                            IDLE_TIME    = $Fields[3]
+                            LOGON_TIME   = $Fields[4]
+                        }
+                    }
+                    $Objects += $Obj
+                    Clear-Variable Fields, Obj
+                }
+
+                # Add the object to the array
+                $global:SessionList += $Objects
+
+                $Objects | ForEach-Object { Write-Host "$Computer logged in by $($_.USERNAME.ToUpper()) (State: $($_.STATE))" -ForegroundColor Cyan } 
+                $Objects | Export-Csv $ReportFile -NoTypeInformation -Append
+                Clear-Variable Lines, Objects
+                $i++
             }
+            Clear-Variable QueryData
     }
 }
 
@@ -82,12 +120,12 @@ if ($global:SessionList.Count -ge 2) {
 Do {
     Write-Host "Type the username you wish to see the Session(s) for, or press ENTER to exit:" -ForegroundColor Yellow
     $username = Read-Host
-    $global:SessionList | where username -eq $username
+    $global:SessionList | Where-Object username -eq $username
     }
     until ($username -eq '')
 }
 
 Write-Host Type '$global:SessionList' to see the full session list in memory. -ForegroundColor Magenta;
-# NOTE: you can use this global variable to query sessions further and/or export them to other formats, e.g. 
+# NOTE: you can use this global variable to query sessions further and/or export them to other formats, e.g.
 # To a grid: $global:SessionList | Out-GridView
 # or JSON: $global:SessionList | ConvertTo-Json | Out-File .\Sessions.json
