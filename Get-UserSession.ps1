@@ -6,7 +6,7 @@ By default, tries to query all enabled computer accounts in the domain. Can also
 
 Comments welcome to 1nTh35h311 (yossis@protonmail.com)
 Version: 1.0.3
-v1.0.3 - An issue fixed by Elrwes/Erland Westervik (Thank you!) resulting in unaligned property values, because SESSIONNAME is empty for disconnected sessions, and the delimiter was spaces.
+v1.0.3 - An issue fixed by Erlwes/Erland Westervik (Thank you!) resulting in unaligned property values, because SESSIONNAME is empty for disconnected sessions, and the delimiter was spaces.
 v1.0.2 - bug fix not displaying some fields correctly (March 23')
 #>
 param (
